@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { SavedPrompt, ProjectType } from '../../types';
+import { SavedPrompt, ProjectType } from '../../types.ts';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Select } from '../common/Select';
-import { EyeIcon, TrashIcon, PlusCircleIcon, MagnifyingGlassIcon, TagIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, TrashIcon, PlusCircleIcon, MagnifyingGlassIcon, TagIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, StarIcon as StarSolidIcon, DocumentDuplicateIcon, CodeBracketSquareIcon } from '@heroicons/react/24/outline';
+import { StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
 import { PROJECT_TYPES_OPTIONS, APP_CATEGORIES_OPTIONS, GAME_CATEGORIES_OPTIONS } from '../../constants';
 
 
@@ -14,19 +15,26 @@ interface LibraryStepProps {
   onDeletePrompt: (id: string) => void;
   onStartNew: () => void;
   onImportPrompts: (prompts: SavedPrompt[]) => void;
+  onToggleFavorite: (id: string) => void;
+  onDuplicatePrompt: (id: string) => void;
 }
 
-type SortOption = 'createdAt_desc' | 'createdAt_asc' | 'name_asc' | 'name_desc' | 'projectType_asc';
+type SortOption = 'createdAt_desc' | 'createdAt_asc' | 'name_asc' | 'name_desc' | 'projectType_asc' | 'isFavorite_desc';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'createdAt_desc', label: '최신순 (기본값)' },
+  { value: 'isFavorite_desc', label: '즐겨찾기순'},
   { value: 'createdAt_asc', label: '오래된순' },
   { value: 'name_asc', label: '이름 (오름차순)' },
   { value: 'name_desc', label: '이름 (내림차순)' },
   { value: 'projectType_asc', label: '프로젝트 유형 (오름차순)' },
 ];
 
-export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt, onDeletePrompt, onStartNew, onImportPrompts }) => {
+const PLACEHOLDER_REGEX_LIB = /\[([A-Z0-9_]+)\]/g;
+const hasPlaceholders = (text: string): boolean => PLACEHOLDER_REGEX_LIB.test(text);
+
+
+export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt, onDeletePrompt, onStartNew, onImportPrompts, onToggleFavorite, onDuplicatePrompt }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('createdAt_desc');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +54,6 @@ export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt,
   const filteredAndSortedPrompts = useMemo(() => {
     let processedPrompts = [...prompts];
 
-    // Sorting
     processedPrompts.sort((a, b) => {
       switch (sortOption) {
         case 'createdAt_asc':
@@ -59,19 +66,24 @@ export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt,
           const typeA = PROJECT_TYPES_OPTIONS.find(opt => opt.id === a.ideaDetails.projectType)?.label || '';
           const typeB = PROJECT_TYPES_OPTIONS.find(opt => opt.id === b.ideaDetails.projectType)?.label || '';
           return typeA.localeCompare(typeB);
+        case 'isFavorite_desc':
+            if (a.isFavorite && !b.isFavorite) return -1;
+            if (!a.isFavorite && b.isFavorite) return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Secondary sort by date
         case 'createdAt_desc':
         default:
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
     });
 
-    // Filtering
     if (searchTerm.trim() !== '') {
       const lowerSearchTerm = searchTerm.toLowerCase();
       processedPrompts = processedPrompts.filter(prompt => 
         prompt.name.toLowerCase().includes(lowerSearchTerm) ||
         prompt.promptText.toLowerCase().includes(lowerSearchTerm) ||
-        (prompt.tags && prompt.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm)))
+        (prompt.tags && prompt.tags.some(tag => tag.toLowerCase().includes(lowerSearchTerm))) ||
+        (prompt.isFavorite && ('favorite'.includes(lowerSearchTerm) || '즐겨찾기'.includes(lowerSearchTerm))) ||
+        (hasPlaceholders(prompt.promptText) && ('template'.includes(lowerSearchTerm) || '템플릿'.includes(lowerSearchTerm)))
       );
     }
     return processedPrompts;
@@ -109,14 +121,22 @@ export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt,
         const text = e.target?.result as string;
         const importedData = JSON.parse(text);
         if (Array.isArray(importedData)) {
-          // Basic validation for each prompt object
           const validPrompts = importedData.filter(p => 
             p && typeof p.id === 'string' && 
             typeof p.name === 'string' && 
             typeof p.promptText === 'string' &&
             typeof p.createdAt === 'string' && 
             typeof p.ideaDetails === 'object' && p.ideaDetails !== null
-          );
+          ).map(p => ({ 
+            ...p,
+            isFavorite: p.isFavorite || false,
+            tags: p.tags || [],
+            ideaDetails: {
+                ...p.ideaDetails, // Ensure all ideaDetails fields are preserved or defaulted
+                projectImage: p.ideaDetails.projectImage || null,
+            },
+            templateVariableValues: p.templateVariableValues || {} // Add this for imported templates
+          }));
           
           if (validPrompts.length > 0) {
             onImportPrompts(validPrompts);
@@ -132,7 +152,6 @@ export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt,
         console.error("Error importing library:", error);
         alert("라이브러리 가져오기 중 오류가 발생했습니다. 파일 형식을 확인해주세요.");
       } finally {
-        // Reset file input value to allow importing the same file again if needed
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -143,9 +162,9 @@ export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt,
 
 
   return (
-    <div className="max-w-4xl mx-auto p-6 sm:p-8 bg-slate-800 rounded-xl shadow-2xl">
+    <div className="max-w-4xl mx-auto p-6 sm:p-8 bg-white dark:bg-slate-800 rounded-xl shadow-2xl">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-        <h2 className="text-3xl font-semibold text-slate-100">프롬프트 라이브러리</h2>
+        <h2 className="text-3xl font-semibold text-slate-800 dark:text-slate-100">프롬프트 라이브러리</h2>
         <div className="flex flex-wrap gap-2">
             <Button onClick={handleExportLibrary} variant="ghost" size="sm" leftIcon={<ArrowDownTrayIcon className="h-5 w-5"/>}>
                 내보내기
@@ -170,45 +189,60 @@ export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt,
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
         <Input
           label="라이브러리 검색"
-          placeholder="이름, 내용, 태그로 검색..."
+          placeholder="이름, 내용, 태그, '즐겨찾기', '템플릿'으로 검색..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full"
-          leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-slate-400"/>}
+          className="w-full" 
+          leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-slate-500 dark:text-slate-400"/>}
         />
         <Select
           label="정렬 기준"
           options={SORT_OPTIONS}
           value={sortOption}
           onChange={(e) => setSortOption(e.target.value as SortOption)}
-          className="w-full"
+          className="w-full" 
         />
       </div>
 
       {filteredAndSortedPrompts.length === 0 ? (
-        <p className="text-slate-400 text-center py-10">
+        <p className="text-slate-500 dark:text-slate-400 text-center py-10">
           {searchTerm ? '검색 결과가 없습니다.' : '라이브러리가 비어있습니다. 프롬프트를 만들어보세요!'}
         </p>
       ) : (
         <div className="space-y-4">
           {filteredAndSortedPrompts.map(prompt => (
-            <div key={prompt.id} className="bg-slate-700 p-4 rounded-lg shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div key={prompt.id} className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg shadow flex flex-col sm:flex-row justify-between items-start gap-3">
               <div className="flex-grow min-w-0">
-                <h3 className="text-lg font-medium text-slate-100 truncate" title={prompt.name}>{prompt.name}</h3>
-                <p className="text-xs text-slate-400">
+                <div className="flex items-center gap-2">
+                    <Button 
+                        onClick={() => onToggleFavorite(prompt.id)} 
+                        variant="ghost" 
+                        size="sm" 
+                        className="!p-1 text-slate-500 hover:text-yellow-500 dark:text-slate-400 dark:hover:text-yellow-400 flex-shrink-0"
+                        title={prompt.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                        aria-label={prompt.isFavorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                    >
+                        {prompt.isFavorite ? <StarSolidIcon className="h-5 w-5 text-yellow-500 dark:text-yellow-400" /> : <StarOutlineIcon className="h-5 w-5" />}
+                    </Button>
+                    {hasPlaceholders(prompt.promptText) && (
+                        <CodeBracketSquareIcon className="h-5 w-5 text-purple-500 dark:text-purple-400 flex-shrink-0" title="템플릿 프롬프트" />
+                    )}
+                    <h3 className="text-lg font-medium text-slate-800 dark:text-slate-100 truncate" title={prompt.name}>{prompt.name}</h3>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 ml-7 sm:ml-0">
                   생성일: {new Date(prompt.createdAt).toLocaleDateString()}
                 </p>
-                <p className="text-xs text-slate-400 mt-1 truncate max-w-md" title={getPromptDisplayDetails(prompt)}>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate max-w-md ml-7 sm:ml-0" title={getPromptDisplayDetails(prompt)}>
                   {getPromptDisplayDetails(prompt)}
                 </p>
                 {prompt.tags && prompt.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5 items-center">
-                    <TagIcon className="h-3.5 w-3.5 text-slate-500 flex-shrink-0"/>
+                  <div className="mt-2 flex flex-wrap gap-1.5 items-center ml-7 sm:ml-0">
+                    <TagIcon className="h-3.5 w-3.5 text-slate-500 dark:text-slate-500 flex-shrink-0"/>
                     {prompt.tags.map(tag => (
                       <button 
                         key={tag} 
                         onClick={() => setSearchTerm(tag)}
-                        className="text-xs bg-purple-600 hover:bg-purple-500 text-purple-100 px-1.5 py-0.5 rounded-full transition-colors"
+                        className="text-xs bg-purple-500 hover:bg-purple-600 text-white dark:bg-purple-600 dark:hover:bg-purple-500 dark:text-purple-100 px-1.5 py-0.5 rounded-full transition-colors"
                         title={`'${tag}' 태그로 검색`}
                       >
                         {tag}
@@ -217,7 +251,17 @@ export const LibraryStep: React.FC<LibraryStepProps> = ({ prompts, onLoadPrompt,
                   </div>
                 )}
               </div>
-              <div className="flex space-x-2 flex-shrink-0 mt-2 sm:mt-0">
+              <div className="flex space-x-2 flex-shrink-0 mt-2 sm:mt-0 self-center sm:self-start">
+                <Button 
+                    onClick={() => onDuplicatePrompt(prompt.id)} 
+                    variant="ghost" 
+                    size="sm" 
+                    leftIcon={<DocumentDuplicateIcon className="h-4 w-4"/>}
+                    title="프롬프트 복제"
+                    aria-label={`"${prompt.name}" 프롬프트 복제`}
+                >
+                  복제
+                </Button>
                 <Button onClick={() => onLoadPrompt(prompt)} variant="ghost" size="sm" leftIcon={<EyeIcon className="h-4 w-4"/>}>
                   보기/수정
                 </Button>

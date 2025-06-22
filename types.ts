@@ -57,8 +57,30 @@ export enum Platform {
   Other = 'Other',
 }
 
+export enum PromptTone {
+  Formal = 'Formal',
+  Casual = 'Casual',
+  Technical = 'Technical',
+  Enthusiastic = 'Enthusiastic',
+  Humorous = 'Humorous',
+}
+
+export enum PromptStyle {
+  Concise = 'Concise',
+  Detailed = 'Detailed',
+  StepByStep = 'StepByStep',
+  Creative = 'Creative',
+  Instructional = 'Instructional',
+}
+
+
 export type StandardFeatureKey = 'login' | 'database' | 'push' | 'gps' | 'payment';
 
+export interface ProjectImage {
+  name: string;
+  type: string;
+  base64Data: string;
+}
 
 export interface IdeaData {
   projectName: string;
@@ -73,16 +95,21 @@ export interface IdeaData {
     framework?: Framework;
     platform?: Platform;
   };
-  useGoogleSearchGrounding?: boolean; // Added for Google Search Grounding
+  useGoogleSearchGrounding?: boolean;
+  projectImage?: ProjectImage | null;
+  promptTone?: PromptTone;
+  promptStyle?: PromptStyle;
 }
 
 export interface SavedPrompt {
   id: string;
   name: string;
   promptText: string;
-  ideaDetails: IdeaData;
+  ideaDetails: IdeaData; 
   createdAt: string; // ISO string
-  tags?: string[]; // Added for tagging
+  tags?: string[];
+  isFavorite?: boolean;
+  templateVariableValues?: Record<string, string>; // Added for template variable values
 }
 
 export enum AppStep {
@@ -91,4 +118,9 @@ export enum AppStep {
   IdeaForm = 'IdeaForm',
   PromptDisplay = 'PromptDisplay',
   Library = 'Library',
+}
+
+export enum Theme {
+  Light = 'light',
+  Dark = 'dark',
 }

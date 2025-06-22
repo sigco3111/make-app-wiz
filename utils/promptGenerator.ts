@@ -1,6 +1,6 @@
 
-import { IdeaData } from '../types';
-import { STANDARD_FEATURES, PROJECT_TYPES_OPTIONS } from '../constants'; 
+import { IdeaData, PromptTone, PromptStyle } from '../types.ts';
+import { STANDARD_FEATURES, PROJECT_TYPES_OPTIONS, PROMPT_TONE_OPTIONS, PROMPT_STYLE_OPTIONS } from '../constants'; 
 
 export function generatePromptText(data: IdeaData): string {
   const projectTypeKorean = PROJECT_TYPES_OPTIONS.find(opt => opt.id === data.projectType)?.label.toLowerCase() || '프로젝트';
@@ -15,7 +15,13 @@ export function generatePromptText(data: IdeaData): string {
 ${data.category ? `- **카테고리:** ${data.category}\n` : ''}
 - **핵심 컨셉/목표:** ${data.summary || '명시되지 않음.'}
 - **주요 타겟 사용자:** ${data.targetAudience || '명시되지 않음.'}
+`;
 
+  if (data.projectImage) {
+    prompt += `- **참고 이미지:** 사용자가 이미지를 제공했습니다. 이 이미지는 아이디어 구상에 영감을 주기 위한 것으로, 요청 시 이미지 데이터와 함께 전달될 것입니다. 이미지의 내용, 스타일, 분위기 등을 고려하여 응답을 생성해주세요. (이미지 파일명: ${data.projectImage.name})\n`;
+  }
+
+  prompt += `
 ### **[핵심 기능 요구사항]**
 `;
 
@@ -103,13 +109,48 @@ Google AI Studio에서는 '모델 설정'(Model Settings)의 '도구'(Tools) 섹
 모든 코드는 즉시 실행 가능하거나 최소한의 설정 변경으로 실행될 수 있도록 작성해주세요. 당신의 목표는 이 프롬프트의 결과물을 사용자가 Google AI Studio의 "Build apps with Gemini"에 바로 적용하여 애플리케이션의 초기 버전을 빠르게 구축할 수 있도록 돕는 것입니다.
 `;
 
+  if (data.projectImage) {
+    prompt += `
+**멀티모달 입력 참고:**
+이 프롬프트와 함께 사용자 제공 이미지가 전송될 예정입니다. API를 통해 Gemini 모델에 요청을 보낼 때, 텍스트 파트와 이미지 파트를 함께 \`contents\`에 포함시켜주세요.
+예시 (JavaScript SDK):
+\`\`\`javascript
+const imagePart = {
+  inlineData: {
+    mimeType: "${data.projectImage.type}", 
+    data: "[ 여기에 이미지의 base64 인코딩 데이터 ]" 
+  }
+};
+const textPart = { text: "위의 프롬프트 내용..." };
+// ...
+// const response = await ai.models.generateContent({ 
+//   model: "gemini-2.5-flash-preview-04-17", // or other suitable model
+//   contents: { parts: [textPart, imagePart] } 
+// });
+\`\`\`
+`;
+  }
+
   prompt += `
 ### **[응답 스타일 및 어조]**
 - 명확하고 간결하며 실행 가능한 정보를 제공해주세요.
 - 코드를 생성하는 경우, 모범 사례를 따르고 필요한 경우 주석을 잘 달아주세요.
-- 디자인 또는 개념 아이디어의 경우 혁신과 사용자 경험에 중점을 두세요.
+- 디자인 또는 개념 아이디어의 경우 혁신과 사용자 경험에 중점을 두세요.`;
 
-단계별로 생각하고 포괄적인 답변을 제공해주세요.
+  const selectedTone = PROMPT_TONE_OPTIONS.find(opt => opt.id === data.promptTone);
+  const selectedStyle = PROMPT_STYLE_OPTIONS.find(opt => opt.id === data.promptStyle);
+
+  if (selectedTone) {
+    prompt += `\n- **선호하는 어조:** ${selectedTone.label}. ${selectedTone.description}`;
+  }
+  if (selectedStyle) {
+    prompt += `\n- **선호하는 스타일:** ${selectedStyle.label}. ${selectedStyle.description}`;
+  }
+  if (!selectedTone && !selectedStyle) {
+    prompt += `\n- 특별히 선호하는 어조나 스타일이 지정되지 않았습니다. 일반적인 기술 문서 스타일로 작성해주세요.`;
+  }
+
+  prompt += `\n\n단계별로 생각하고 포괄적인 답변을 제공해주세요.
 `;
 
   return prompt.trim();
