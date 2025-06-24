@@ -114,7 +114,7 @@ API 키가 없거나 유효하지 않으면, Gemini AI를 호출하는 기능(�
 ## Gemini API 사용
 
 *   본 애플리케이션은 `@google/genai` SDK를 통해 Google Gemini 모델과 상호작용합니다.
-*   주요 사용 모델: `gemini-2.5-flash-preview-04-17` (텍스트 생성 및 아이디어 지원용)
+*   주요 사용 모델: `gemini-2.5-flash` (텍스트 생성 및 아이디어 지원용)
 *   API 호출 위치:
     *   `IdeaFormStep.tsx`: 키워드 및 프로젝트 이름 기반 자동 완성, 연관/랜덤 키워드 생성
     *   `PromptDisplayStep.tsx`: 생성된 프롬프트 반복 개선
