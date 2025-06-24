@@ -124,7 +124,7 @@ const imagePart = {
 const textPart = { text: "위의 프롬프트 내용..." };
 // ...
 // const response = await ai.models.generateContent({ 
-//   model: "gemini-2.5-flash-preview-04-17", // or other suitable model
+//   model: "gemini-2.5-flash", // or other suitable model
 //   contents: { parts: [textPart, imagePart] } 
 // });
 \`\`\`
