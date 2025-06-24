@@ -217,7 +217,7 @@ export const IdeaFormStep: React.FC<IdeaFormStepProps> = ({ initialData, onSubmi
     }
     const ai = new GoogleGenAI({ apiKey: apiKey });
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-04-17',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -240,7 +240,7 @@ export const IdeaFormStep: React.FC<IdeaFormStepProps> = ({ initialData, onSubmi
     }
     const ai = new GoogleGenAI({ apiKey: apiKey });
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-04-17',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
     return response.text.trim();
@@ -506,7 +506,7 @@ export const IdeaFormStep: React.FC<IdeaFormStepProps> = ({ initialData, onSubmi
       `;
       
       const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-preview-04-17',
+          model: 'gemini-2.5-flash',
           contents: promptForRelatedKeywords,
       });
       const newKeywords = response.text.trim();
@@ -552,7 +552,7 @@ export const IdeaFormStep: React.FC<IdeaFormStepProps> = ({ initialData, onSubmi
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey }); 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: 'gemini-2.5-flash',
         contents: promptForRandomKeywords,
       });
       const randomKeywords = response.text.trim();
