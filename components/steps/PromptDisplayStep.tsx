@@ -177,7 +177,7 @@ ${refinementInstruction}
 Refined Prompt:`;
 
       const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: 'gemini-2.5-flash',
         contents: metaPrompt,
       });
       
@@ -219,7 +219,7 @@ Refined Prompt:`;
         태그 제안:`;
       
       const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: 'gemini-2.5-flash',
         contents: tagSuggestionPrompt,
       });
 
