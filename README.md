@@ -4,7 +4,7 @@
 
 앱 생성 프롬프트 아이디어 마법사는 사용자가 단계별 가이드를 따라 몇 가지 질문에 답하면, Gemini AI가 가장 잘 이해하고 최상의 결과물(코드, 기획안, UI/UX 아이디어 등)을 생성할 수 있도록 체계적이고 상세한 프롬프트를 자동으로 완성해주는 웹 애플리케이션입니다.
 
-실행 주소 : https://sigco3111.github.io/make-app-wiz/
+**👉 라이브 데모**: [https://sigco3111.github.io/make-app-wiz/](https://sigco3111.github.io/make-app-wiz/) — 브라우저에서 바로 실행
 
 ## 핵심 아이디어
 
